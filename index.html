@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#a8e6ff">
+<title>TT Checkers · Teddy &amp; Tommy</title>
+<!-- The game's icon: the same emoji as its card on the dashboard, on a coloured tile. It's the browser tab's icon (the SVG, then
+     a PNG drawn below) and the iPad home screen's (apple-touch-icon). The device's own emoji font draws it: no image files. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'%3E%3Crect%20x='2'%20y='2'%20width='60'%20height='60'%20rx='14'%20fill='%23ffd400'%20stroke='%2314121f'%20stroke-width='4'/%3E%3Ctext%20x='32'%20y='44'%20font-size='36'%20text-anchor='middle'%3E%F0%9F%94%B4%3C/text%3E%3C/svg%3E">
+<script>
+  (function (emoji, tile) {
+    function draw(size, framed) {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const g = c.getContext('2d');
+      if (!g) return '';
+      const u = size / 64;
+      g.fillStyle = tile;
+      if (framed) { // the tab: a rounded tile with the dashboard's dark outline
+        g.beginPath();
+        if (g.roundRect) g.roundRect(2 * u, 2 * u, 60 * u, 60 * u, 14 * u); else g.rect(2 * u, 2 * u, 60 * u, 60 * u);
+        g.fill();
+        g.lineWidth = 4 * u;
+        g.strokeStyle = '#14121f';
+        g.stroke();
+      } else g.fillRect(0, 0, size, size); // the home screen: iOS rounds the corners itself
+      g.font = `${Math.round(size * (framed ? 0.56 : 0.62))}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+      g.textAlign = 'center';
+      const m = g.measureText(emoji);
+      const up = m.actualBoundingBoxAscent || size * 0.4, down = m.actualBoundingBoxDescent || 0;
+      g.fillText(emoji, size / 2, size / 2 + (up - down) / 2);
+      try { return c.toDataURL('image/png'); } catch (e) { return ''; }
+    }
+    const tab = draw(64, true), home = draw(180, false);
+    if (tab) document.querySelector('link[rel="icon"]').href = tab;
+    if (home) {
+      const l = document.createElement('link');
+      l.rel = 'apple-touch-icon';
+      l.href = home;
+      document.head.appendChild(l);
+    }
+  })('🔴', '#ffd400');
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #ffd400;
+    --pink: #ff3d7f;
+    --cyan: #18d4ff;
+    --mint: #3fe0b0;
+    --green: #7ed957;
+    --blue: #2f7cf0;
+    --orange: #ff8a1f;
+    --ink: #14121f;
+    --sq-l: #fff1d2;
+    --sq-d: #2e9e58;
+    --display: 'Bungee', 'Arial Black', Impact, sans-serif;
+    --pad: max(12px, env(safe-area-inset-left));
+    /* the kit's ? and language buttons (js/keys.js): the middle of the left edge, but on a tall screen in a game the
+       bottom left corner, so the board can use the whole width */
+    --kh-top: calc(50% - 20px);
+    --kl-top: calc(50% + 28px);
+  }
+  @media (max-aspect-ratio: 115/100) {
+    body[data-screen="play"] { --kh-top: calc(100% - 104px - env(safe-area-inset-bottom)); --kl-top: calc(100% - 56px - env(safe-area-inset-bottom)); }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden; background: #a8e6ff; color: #fff;
+    font-family: 'Rubik', system-ui, -apple-system, sans-serif;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
+  #game, #fx { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #fx { pointer-events: none; z-index: 8; }
+  .hidden { opacity: 0 !important; pointer-events: none !important; visibility: hidden; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+  /* a checkers piece, for the menus and the rules: a chunky disc in its side's colour, a gold crown on a king */
+  .pc { position: relative; display: inline-block; width: 1.5em; height: 1.5em; border-radius: 50%; vertical-align: middle; flex-shrink: 0;
+    background: radial-gradient(circle at 50% 45%, #5b9bff 0 34%, #2f7cf0 36% 52%, #6aa6ff 54% 58%, #2f7cf0 60%);
+    border: 0.09em solid var(--ink); box-shadow: 0 0.13em 0 #1b4fa8, 0 0.17em 0 var(--ink); }
+  .pc.o { background: radial-gradient(circle at 50% 45%, #ffae5e 0 34%, #ff8a1f 36% 52%, #ffb066 54% 58%, #ff8a1f 60%); box-shadow: 0 0.13em 0 #c25f08, 0 0.17em 0 var(--ink); }
+  .pc.k::after { content: '👑'; position: absolute; left: 50%; top: -0.62em; transform: translateX(-50%); font-size: 0.95em; line-height: 1; }
+  .pc.glow { box-shadow: 0 0 0 0.12em var(--yellow), 0 0 0.6em 0.2em rgba(255, 212, 0, 0.9), 0 0.17em 0 var(--ink); }
+
+  /* ---------- big chunky buttons ---------- */
+  .bigbtn {
+    min-width: clamp(78px, 13vmin, 112px); height: clamp(78px, 13vmin, 112px); border-radius: 28px; padding: 0 18px;
+    font-size: clamp(40px, 7vmin, 58px); line-height: 1; display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: linear-gradient(160deg, #ffffff, #e9e3ff); border: 5px solid #fff; box-shadow: 0 7px 0 var(--ink); color: var(--ink);
+    transition: transform 0.08s;
+  }
+  .bigbtn.go { background: linear-gradient(160deg, #8ef56b, #2dbf4e); color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,.25); }
+  .bigbtn .word { font-family: var(--display); font-size: clamp(22px, 4.4vmin, 36px); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); color: #fff; }
+  .bigbtn:active, .tile:active, .seg button:active, .ibtn:active, .tbtn:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--ink); }
+  .ibtn {
+    width: clamp(52px, 8vmin, 72px); height: clamp(52px, 8vmin, 72px); border-radius: 20px; font-size: clamp(26px, 4.4vmin, 36px); line-height: 1;
+    display: grid; place-items: center; background: rgba(255, 255, 255, 0.92); border: 4px solid #fff; box-shadow: 0 5px 0 var(--ink);
+  }
+
+  /* ---------- home ---------- */
+  #home { position: fixed; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: clamp(10px, 2.2vh, 20px); transition: opacity 0.3s; padding: 12px; }
+  @media (min-aspect-ratio: 115/100) { #home { left: 46vw; right: max(10px, env(safe-area-inset-right)); top: 0; bottom: 0; } }
+  @media (max-aspect-ratio: 115/100) { #home { left: 0; right: 0; bottom: max(8px, env(safe-area-inset-bottom)); height: 60vh; justify-content: flex-start; padding-left: 62px; padding-right: 12px; } }
+  .logo { text-align: center; font-family: var(--display); line-height: 0.92; transform: rotate(-3deg); }
+  .logo small { display: block; font-size: clamp(26px, 5vmin, 44px); color: var(--cyan); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); }
+  .logo big { display: block; font-size: clamp(38px, 8.4vmin, 82px); color: var(--yellow); -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; text-shadow: 0 6px 0 var(--ink), 0 12px 24px rgba(0,0,0,.2); letter-spacing: 1px; white-space: nowrap; }
+  .tagline { font-family: var(--display); font-size: clamp(13px, 2.4vmin, 19px); color: #fff; -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; text-align: center; margin-top: -4px; }
+  .tiles { display: flex; gap: clamp(12px, 3vmin, 28px); }
+  .tile {
+    position: relative; width: clamp(140px, 25vmin, 250px); aspect-ratio: 1 / 0.86; border-radius: 32px; border: 6px solid #fff;
+    box-shadow: 0 9px 0 var(--ink); overflow: hidden; transition: transform 0.08s; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7%; padding-top: 6%;
+  }
+  .tile:hover { transform: translateY(-3px) rotate(-1deg); }
+  .tile.play { background: repeating-conic-gradient(#ffffff 0 25%, #ff6b6b 0 50%) 0 0 / 26px 26px; }
+  .tile.play::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.2), rgba(255,255,255,.75)); }
+  .tile.rules { background: radial-gradient(circle at 50% 35%, #fff3c4, #ffc93c); }
+  .tile > * { position: relative; }
+  .tile b { font-family: var(--display); font-weight: 400; font-size: clamp(18px, 3.4vmin, 32px); line-height: 1.05; text-align: center; color: #fff; -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); padding: 0 6px; }
+  .tile .go { position: absolute; right: 5px; top: 5px; width: 21%; aspect-ratio: 1; border-radius: 50%; background: linear-gradient(160deg, #8ef56b, #2dbf4e); border: 4px solid #fff; box-shadow: 0 4px 0 var(--ink); display: grid; place-items: center; font-size: clamp(18px, 3.6vmin, 32px); }
+  .tile .chips { display: flex; align-items: center; gap: 0.35em; font-size: clamp(20px, 4vmin, 36px); }
+  .opts { display: flex; flex-direction: column; align-items: center; gap: clamp(8px, 1.6vh, 14px); }
+  .seg { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .seg button {
+    display: flex; align-items: center; gap: 8px; height: clamp(50px, 8.2vmin, 70px); padding: 0 16px 0 10px; border-radius: 22px; border: 4px solid #fff;
+    background: rgba(255, 255, 255, 0.55); box-shadow: 0 5px 0 var(--ink); color: var(--ink); font-family: var(--display); font-size: clamp(14px, 2.7vmin, 23px); transition: transform 0.12s;
+  }
+  .seg button img { height: 80%; aspect-ratio: 1; border-radius: 14px; background: radial-gradient(circle at 50% 35%, #ffffff, #b9e6ff); }
+  .seg button .emo { font-size: 1.3em; }
+  .seg button .fox { font-size: 1.25em; filter: drop-shadow(0 2px 0 rgba(20,18,31,.35)); }
+  .seg button .pc { font-size: 0.75em; }
+  .seg button.on { background: linear-gradient(160deg, #fffbe0, #ffd84a); border-color: var(--yellow); box-shadow: 0 0 0 4px var(--ink), 0 6px 0 4px var(--ink); transform: scale(1.06); }
+  .seg.sw button.on { transform: none; }
+  .seg.sw button:not(.on) { opacity: 0.75; }
+  .seg.sw button:not(.on) .emo { filter: grayscale(1); }
+  .duo { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: clamp(16px, 3vmin, 26px); color: var(--ink); background: rgba(255,255,255,.55); border: 4px solid #fff; border-radius: 22px; padding: 4px 14px 4px 6px; box-shadow: 0 5px 0 var(--ink); }
+  .duo img { width: clamp(44px, 7vmin, 62px); aspect-ratio: 1; border-radius: 14px; background: radial-gradient(circle at 50% 35%, #ffffff, #b9e6ff); }
+  .duo .pc { font-size: 0.85em; }
+  .duo .vs { color: var(--pink); }
+  @media (max-height: 430px) {
+    /* a phone on its side: the menu a size smaller so it all fits */
+    #home { gap: 5px; padding: 4px; }
+    .logo small { font-size: 17px; -webkit-text-stroke-width: 2px; }
+    .logo big { font-size: 30px; text-shadow: 0 4px 0 var(--ink); }
+    .tagline { display: none; }
+    .tile { width: 116px; border-width: 4px; border-radius: 22px; }
+    .tile b { font-size: 14px; }
+    .tile .go { display: none; } /* the whole tile is the button; no room for the ▶ here */
+    .tile .chips { font-size: 17px; }
+    .seg button { height: 40px; font-size: 13px; border-radius: 15px; padding: 0 9px 0 6px; border-width: 3px; }
+    .opts { gap: 6px; }
+    .duo { font-size: 13px; }
+    .duo img { width: 34px; }
+  }
+  @media (max-width: 430px) and (max-aspect-ratio: 115/100) {
+    .seg button { padding: 0 10px 0 7px; gap: 5px; }
+  }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 6; transition: opacity 0.3s; }
+  .hudtop { position: absolute; left: var(--pad); right: max(12px, env(safe-area-inset-right)); top: max(10px, env(safe-area-inset-top)); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .hudtop > button { pointer-events: auto; flex-shrink: 0; }
+  .hudmid { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; min-width: 0; margin-left: var(--toolsw, 0px); }
+  .score { display: flex; align-items: center; gap: clamp(6px, 1.4vmin, 12px); padding: 5px 8px; border-radius: 999px; background: rgba(20, 18, 31, 0.55); border: 3px solid #fff; }
+  .score .side { display: flex; align-items: center; gap: clamp(4px, 1vmin, 8px); border-radius: 999px; padding: 2px; transition: box-shadow 0.2s, background 0.2s; }
+  .score .side.now { background: rgba(255, 212, 0, 0.35); box-shadow: 0 0 0 3px var(--yellow); }
+  .score img { width: clamp(38px, 6.5vmin, 56px); height: clamp(38px, 6.5vmin, 56px); border-radius: 50%; background: radial-gradient(circle at 50% 35%, #fff3d0, #ffd27a); border: 4px solid var(--blue); }
+  .score img.o { border-color: var(--orange); }
+  .score b { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 5vmin, 42px); line-height: 1; color: var(--yellow); min-width: 1ch; text-align: center; -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; font-variant-numeric: tabular-nums; }
+  .score b.bump { animation: bump 0.4s cubic-bezier(.3, 1.8, .5, 1); }
+  .score .dash { font-family: var(--display); color: #fff; font-size: clamp(18px, 3vmin, 26px); }
+  .score .left { font-family: var(--display); font-size: clamp(12px, 2vmin, 15px); color: #fff; display: flex; align-items: center; gap: 2px; }
+  .score .left .pc { font-size: 0.85em; }
+  @keyframes bump { 40% { transform: scale(1.4) rotate(-6deg); } }
+  .turn { font-family: var(--display); font-size: clamp(18px, 3.6vmin, 30px); color: #fff; -webkit-text-stroke: 2.5px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); white-space: nowrap; transition: opacity 0.2s; }
+  .turn.mine { color: var(--yellow); animation: nudge 1.2s ease-in-out infinite; }
+  .drawcount { font-family: var(--display); font-size: clamp(13px, 2.4vmin, 18px); color: #fff; padding: 2px 10px; border-radius: 999px; background: rgba(232, 55, 44, 0.85); border: 2px solid #fff; }
+  @keyframes nudge { 50% { transform: scale(1.08); } }
+  @media (max-width: 520px) {
+    .score img { width: 36px; height: 36px; border-width: 3px; }
+    .turn { font-size: 17px; }
+  }
+  @media (max-height: 520px) {
+    /* a phone on its side: the turn line beside the score, all smaller */
+    .hudmid { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 4px 10px; }
+    .score img { width: 34px; height: 34px; border-width: 3px; }
+    .score b { font-size: 24px; }
+    .turn { font-size: 16px; }
+  }
+
+  /* undo and the rules reminder: next to pause */
+  .tools { position: fixed; z-index: 7; display: flex; gap: 10px; pointer-events: none; left: calc(var(--pad) + clamp(52px, 8vmin, 72px) + 10px); top: max(10px, env(safe-area-inset-top)); }
+  .tools > * { pointer-events: auto; }
+  .tbtn {
+    height: clamp(52px, 8vmin, 72px); min-width: clamp(52px, 8vmin, 72px); border-radius: 20px; padding: 0 8px; display: flex; align-items: center; justify-content: center; gap: 4px;
+    background: rgba(255, 255, 255, 0.92); border: 4px solid #fff; box-shadow: 0 5px 0 var(--ink); color: var(--ink); font-size: clamp(24px, 4vmin, 34px); line-height: 1;
+  }
+  .tbtn:disabled { opacity: 0.45; }
+  .tbtn.off { display: none; }
+  @media (max-height: 430px) { .tbtn, .ibtn { height: 46px; min-width: 46px; width: auto; font-size: 22px; border-radius: 15px; border-width: 3px; } .ibtn { width: 46px; } .tools { left: calc(var(--pad) + 56px); } }
+  @media (max-width: 520px) and (max-aspect-ratio: 115/100) {
+    /* a phone held upright: pause, undo and the rules in a row, the score under them */
+    .tbtn, .ibtn { height: 48px; min-width: 48px; font-size: 24px; border-radius: 16px; }
+    .ibtn { width: 48px; }
+    .tools { left: calc(var(--pad) + 56px); gap: 8px; }
+    .hudtop { flex-wrap: wrap; }
+    .hudmid { order: 3; flex-basis: 100%; margin-left: 0; }
+  }
+
+  /* your brother's button (1 player) / the high five (2 players): bottom right, big */
+  .callbtn {
+    position: fixed; z-index: 7; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom));
+    width: clamp(84px, 14vmin, 124px); aspect-ratio: 1; border-radius: 50%; padding: 6px;
+    background: linear-gradient(135deg, #ffb02e, #ff7a1a); border: 5px solid #fff; box-shadow: 0 7px 0 var(--ink);
+    display: grid; place-items: center; font-size: clamp(44px, 8vmin, 64px); line-height: 1;
+  }
+  .callbtn img { width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #fff3d0, #ffd27a); }
+  .callbtn kbd { position: absolute; left: -6px; top: -6px; width: 34px; height: 34px; border-radius: 10px; background: #fff; color: var(--ink); font: 400 18px/30px var(--display); text-align: center; border: 3px solid var(--ink); }
+  @media (hover: none) and (pointer: coarse) { .callbtn kbd { display: none; } }
+  .callbtn:active { transform: translateY(5px); box-shadow: 0 2px 0 var(--ink); }
+  .callbtn.here { animation: glow 1.1s ease-in-out infinite; border-color: var(--yellow); }
+  .callbtn.wiggle { animation: wiggle 0.9s ease-in-out 3; }
+  @keyframes glow { 50% { box-shadow: 0 0 30px 8px rgba(255, 212, 0, 0.9), 0 7px 0 var(--ink); } }
+  @keyframes wiggle { 20% { transform: rotate(-12deg) scale(1.08); } 40% { transform: rotate(10deg) scale(1.08); } 60% { transform: rotate(-6deg); } 80% { transform: rotate(4deg); } }
+  @media (max-height: 430px) { .callbtn { width: 74px; border-width: 4px; } }
+
+  /* ---------- toasts ---------- */
+  #toasts { position: fixed; left: 50%; top: 22%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; z-index: 9; width: 96vw; }
+  .toast {
+    font-family: var(--display); font-size: clamp(22px, 4.6vmin, 42px); color: var(--yellow); max-width: 94vw; text-align: center;
+    -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); animation: toast 1.9s ease-out forwards;
+  }
+  .toast.save { color: #7df7c8; font-size: clamp(24px, 5.4vmin, 48px); animation-duration: 2.8s; }
+  .toast.warn { color: #ff8f8f; }
+  .toast.treat { color: #fff; }
+  .toast.buddy { color: #ffb02e; }
+  .toast.hint { color: #fff; font-size: clamp(18px, 3.6vmin, 30px); }
+  @keyframes toast { 0% { transform: scale(0.4); opacity: 0; } 12% { transform: scale(1.12); opacity: 1; } 20% { transform: scale(1); } 80% { opacity: 1; } 100% { transform: translateY(-30px); opacity: 0; } }
+
+  /* ---------- overlays: game over, pause, the rules ---------- */
+  .overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(20, 18, 31, 0.35); transition: opacity 0.25s; padding: 14px; }
+  .panel { position: relative; display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 2.2vh, 20px); padding: clamp(16px, 3.4vmin, 32px); border-radius: 40px; background: linear-gradient(170deg, #f4ffe6, #d6f5b8); border: 6px solid #fff; box-shadow: 0 10px 0 var(--ink); color: var(--ink); max-width: 96vw; max-height: 96vh; }
+  .rface { display: flex; align-items: center; gap: 14px; }
+  .rface img { width: clamp(70px, 14vmin, 120px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #fff3d0, #ffd27a); border: 5px solid var(--blue); box-shadow: 0 4px 0 var(--ink); animation: pop 0.5s cubic-bezier(.3, 1.8, .5, 1); }
+  .rface img.o { border-color: var(--orange); }
+  .rface .big { font-size: clamp(56px, 12vmin, 100px); line-height: 1; animation: pop 0.5s cubic-bezier(.3, 1.8, .5, 1); }
+  @keyframes pop { from { transform: scale(0.3); } }
+  .rtitle { font-family: var(--display); font-size: clamp(30px, 6.6vmin, 60px); line-height: 1.05; text-align: center; color: var(--yellow); -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); max-width: 88vw; }
+  .rsub { font-family: var(--display); font-size: clamp(16px, 3.2vmin, 26px); text-align: center; color: var(--ink); }
+  .rscore { display: flex; align-items: center; gap: 12px; font-family: var(--display); font-size: clamp(28px, 5.6vmin, 48px); }
+  .rscore img { width: 1.3em; height: 1.3em; border-radius: 50%; background: radial-gradient(circle at 50% 35%, #fff3d0, #ffd27a); border: 3px solid var(--blue); }
+  .rscore img.o { border-color: var(--orange); }
+  .rscore .dash { color: #8a9a7a; }
+  .rbtns { display: flex; gap: clamp(14px, 3vmin, 26px); align-items: center; flex-wrap: wrap; justify-content: center; }
+  #pause .panel { flex-direction: row; gap: 20px; flex-wrap: wrap; justify-content: center; }
+  @media (max-height: 430px) { .panel { gap: 8px; padding: 12px 20px; } .rface img { width: 60px; } .rface .big { font-size: 48px; } .bigbtn { height: 62px; min-width: 62px; font-size: 30px; border-radius: 20px; } .rtitle { font-size: 28px; } }
+
+  /* the rules: how to move, jump, double jump and crown a king, with pictures */
+  #rules .panel { width: min(900px, 96vw); gap: clamp(8px, 1.6vh, 14px); overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; background: linear-gradient(170deg, #fffbe9, #ffe6b0); }
+  #rules .rtitle { font-size: clamp(26px, 5.4vmin, 48px); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 10px; width: 100%; }
+  .card { background: #fff; border: 4px solid var(--ink); border-radius: 22px; padding: 10px 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; box-shadow: 0 5px 0 rgba(20,18,31,.35); }
+  .card.star { background: #fff5c2; }
+  .card b { font-family: var(--display); font-weight: 400; font-size: clamp(15px, 2.6vmin, 20px); line-height: 1.1; }
+  .card span { font-size: clamp(13px, 2.2vmin, 16px); font-weight: 700; color: #4a4560; line-height: 1.25; }
+  .pic { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: clamp(20px, 3.8vmin, 28px); min-height: 2.6em; }
+  .pic .arrow { font-family: var(--display); color: var(--pink); font-size: 0.9em; }
+  /* a little board: js/game.js fills it from data-b (rows split by /; . light, _ dark, b o blue / orange man, B O kings,
+     * a square to move to, 1 2 the hops of a jump, x y a blue / orange piece being jumped, g a piece that must jump) */
+  .mb { display: grid; grid-auto-rows: 1.25em; border: 3px solid #8a5a32; border-radius: 6px; overflow: hidden; font-size: clamp(20px, 3.8vmin, 28px); box-shadow: 0 3px 0 rgba(20,18,31,.3); }
+  .mb i { width: 1.25em; height: 1.25em; display: grid; place-items: center; background: var(--sq-l); font-style: normal; position: relative; }
+  .mb i.d { background: var(--sq-d); }
+  .mb .pc { font-size: 0.68em; }
+  .mb .dot { width: 0.5em; height: 0.5em; border-radius: 50%; background: #4dff88; border: 2px solid var(--ink); font: 400 0.42em/1 var(--display); color: var(--ink); display: grid; place-items: center; }
+  .mb .dot.n { width: 0.7em; height: 0.7em; background: #fff; }
+  .mb .hit::after { content: '💥'; position: absolute; font-size: 0.75em; right: -0.15em; top: -0.2em; }
+
+  #loading { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: #a8e6ff; font-size: 80px; transition: opacity 0.4s; }
+  #loading span { animation: bump 0.8s infinite; display: inline-block; }
+  @media (prefers-reduced-motion: reduce) { .turn.mine, .callbtn.here, .callbtn.wiggle { animation: none; } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<canvas id="fx"></canvas>
+
+<!-- home -->
+<div id="home">
+  <div class="logo" id="logo"><small></small><big></big></div>
+  <div class="tagline">JUMP, BONK AND MAKE A KING!</div>
+  <div class="tiles">
+    <button class="tile play" id="goPlay" title="Play (Enter)" aria-label="Play">
+      <span class="chips"><i class="pc"></i><i class="pc o k"></i><i class="pc"></i></span>
+      <b>PLAY</b><span class="go">▶</span>
+    </button>
+    <button class="tile rules" id="goRules" title="How to play (H)" aria-label="How to play">
+      <span class="chips"><i class="pc k"></i><span>📖</span></span>
+      <b>HOW TO PLAY</b>
+    </button>
+  </div>
+  <div class="opts">
+    <div class="seg" id="segPlayers" role="radiogroup" aria-label="Players">
+      <button data-v="1"><span class="emo">👤</span>1 PLAYER</button>
+      <button data-v="2"><span class="emo">👥</span>2 PLAYERS</button>
+    </div>
+    <div class="seg" id="segWho" role="radiogroup" aria-label="Who are you?">
+      <button data-v="teddy"><img alt="" draggable="false">TEDDY<i class="pc"></i></button>
+      <button data-v="tommy"><img alt="" draggable="false">TOMMY<i class="pc o"></i></button>
+    </div>
+    <div class="seg" id="segLevel" role="radiogroup" aria-label="Level">
+      <button data-v="easy"><span class="emo">🐣</span>EASY<span class="fox">🦊</span></button>
+      <button data-v="normal"><span class="emo">🔥</span>NORMAL<span class="fox">🦊</span></button>
+    </div>
+    <div class="duo" id="duo"><img id="duoA" alt="" draggable="false"><i class="pc"></i><span class="vs">·</span><i class="pc o"></i><img id="duoB" alt="" draggable="false"></div>
+    <div class="seg sw" id="segSwitches" aria-label="Switches">
+      <button data-v="undo" role="switch" title="Undo button (U)"><span class="emo">↩️</span>UNDO</button>
+      <button data-v="forced" role="switch" title="If you can jump, you must (J)"><span class="emo">💥</span>MUST JUMP</button>
+    </div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hudtop">
+    <button class="ibtn" id="pauseBtn" title="Pause (P)" aria-label="Pause">⏸️</button>
+    <div class="hudmid">
+      <div class="score">
+        <div class="side" id="sideL"><img id="faceL" alt=""><b id="scoreL">0</b></div>
+        <span class="dash">–</span>
+        <div class="side" id="sideR"><b id="scoreR">0</b><img id="faceR" alt=""></div>
+      </div>
+      <div class="turn" id="turn"></div>
+      <div class="drawcount hidden" id="drawCount"></div>
+    </div>
+    <button class="ibtn" id="muteBtn" title="Sound (M)" aria-label="Sound on or off">🔊</button>
+  </div>
+</div>
+<div class="tools hidden" id="tools">
+  <button class="tbtn" id="undoBtn" title="Undo (U)" aria-label="Undo">↩️</button>
+  <button class="tbtn" id="rulesBtn" title="How to play (H)" aria-label="How to play">📖</button>
+</div>
+<button class="callbtn hidden" id="callBtn" aria-label="Call your brother"><img id="callFace" alt=""><kbd>T</kbd></button>
+
+<div id="toasts"></div>
+
+<!-- the game is over -->
+<div id="gameOver" class="overlay hidden">
+  <div class="panel">
+    <div class="rface" id="oFace"></div>
+    <div class="rtitle" id="oTitle"></div>
+    <div class="rsub" id="oWhy"></div>
+    <div class="rscore" id="oScore"></div>
+    <div class="rbtns">
+      <button class="bigbtn go" id="oAgain" aria-label="Play again"><span class="word">PLAY AGAIN</span></button>
+      <button class="bigbtn" id="oHome" aria-label="Home">🏠</button>
+    </div>
+  </div>
+</div>
+
+<!-- pause -->
+<div id="pause" class="overlay hidden">
+  <div class="panel">
+    <button class="bigbtn go" id="pResume" aria-label="Keep playing">▶</button>
+    <button class="bigbtn" id="pRestart" aria-label="Start a new game">🔄</button>
+    <button class="bigbtn" id="pRules" aria-label="How to play">📖</button>
+    <button class="bigbtn" id="pHome" aria-label="Home">🏠</button>
+  </div>
+</div>
+
+<!-- the rules, with pictures -->
+<div id="rules" class="overlay hidden">
+  <div class="panel">
+    <div class="rtitle">HOW TO PLAY</div>
+    <div class="cards">
+      <div class="card">
+        <div class="pic"><div class="mb" data-b="*.*/.b."></div></div>
+        <b>MOVE ONE STEP, CORNER TO CORNER.</b>
+        <span>Forward, on the dark squares. Tap a piece to see where it can go.</span>
+      </div>
+      <div class="card star">
+        <div class="pic"><div class="mb" data-b="..1/.y./b.."></div></div>
+        <b>JUMP OVER A PIECE TO TAKE IT. BONK!</b>
+        <span>Hop over it onto the empty square behind it.</span>
+      </div>
+      <div class="card">
+        <div class="pic"><div class="mb" data-b="2../.y./..1/.y./b.."></div></div>
+        <b>KEEP JUMPING: A DOUBLE JUMP!</b>
+        <span>If you can jump again from where you land, keep going. It's all one move.</span>
+      </div>
+      <div class="card star">
+        <div class="pic"><i class="pc"></i><span class="arrow">➜</span><i class="pc k"></i></div>
+        <b>REACH THE FAR SIDE: A KING! 👑</b>
+        <span>He gets a crown. Crowning ends your move.</span>
+      </div>
+      <div class="card">
+        <div class="pic"><div class="mb" data-b="*.*/.B./*.*"></div></div>
+        <b>KINGS GO BACKWARD TOO.</b>
+        <span>A king moves and jumps both ways.</span>
+      </div>
+      <div class="card">
+        <div class="pic"><div class="mb" data-b="..1/.y./g.."></div></div>
+        <b>IF YOU CAN JUMP, YOU MUST!</b>
+        <span>The pieces that must jump glow. Little ones can switch MUST JUMP off on the menu.</span>
+      </div>
+      <div class="card star">
+        <div class="pic"><span>🏆</span><i class="pc o"></i><span class="arrow">=</span><span>0</span></div>
+        <b>TAKE THEM ALL, OR BOX THEM IN!</b>
+        <span>You win when they have no pieces left, or can't move.</span>
+      </div>
+      <div class="card">
+        <div class="pic"><span>🤝</span></div>
+        <b>40 MOVES EACH WITH NO JUMP AND NO NEW KING IS A DRAW.</b>
+        <span>The count starts again after a jump or a crowning.</span>
+      </div>
+    </div>
+    <button class="bigbtn go" id="rulesOk" aria-label="Got it">▶</button>
+  </div>
+</div>
+
+<div id="loading"><span>🔴</span></div>
+
+<script src="kit/three.min.js"></script>
+<script src="kit/gfx.js"></script>
+<script src="kit/people.js"></script>
+<script src="kit/roster.js"></script>
+<script src="kit/portraits.js"></script>
+<script src="kit/sound.js"></script>
+<script src="kit/lang.js"></script>
+<script src="kit/help.js"></script>
+<script src="js/title.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/check.js"></script>
+<script src="js/sfx.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/actor.js"></script>
+<script src="js/stage.js"></script>
+<script src="js/buddy.js"></script>
+<script src="js/game.js"></script>
+<script src="js/keys.js"></script>
+<script src="js/zh.js"></script>
+</body>
+</html>
