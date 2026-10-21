@@ -22,7 +22,7 @@
   const FOX_SCALE = 0.85;  // Foxy on her podium
   const THINK_MS = 6;      // how long Foxy may think in one frame
 
-  const prefs = Object.assign({ players: 1, who: 'teddy', levels: { teddy: 'normal', tommy: 'easy' }, undo: true, forced: true }, load());
+  const prefs = Object.assign({ players: 1, who: 'teddy', levels: { teddy: 'easy', tommy: 'easy' }, undo: true, forced: true }, load());
   const G = {
     state: 'boot', players: 1, level: 'easy', sides: null, kid: BLUE, st: null, history: [], wins: [0, 0], draws: 0,
     starter: BLUE, sel: -1, prefix: [], cursor: -1, cpuT: -1, job: null, waitT: -1, busy: false, turnId: 0, endT: -1,
@@ -46,7 +46,7 @@
       localStorage.setItem(KEY, JSON.stringify(prefs));
     } catch (e) { /* private mode */ }
   }
-  const levelFor = (who) => (prefs.levels && prefs.levels[who]) || (who === 'tommy' ? 'easy' : 'normal');
+  const levelFor = (who) => (prefs.levels && prefs.levels[who]) || 'easy';
 
   // ---------------------------------------------------------------- who's at the board
 

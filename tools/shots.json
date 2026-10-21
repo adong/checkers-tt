@@ -1,0 +1,4 @@
+[
+ { "label": "prefs", "js": "localStorage.setItem('claudeGames.muted', '1'); localStorage.removeItem('claudeGames.lang'); localStorage.removeItem('checkersTT.v1'); location.reload(); 'reload'", "wait": 4000 },
+ { "label": "title", "js": "game.hold(true); for (var i = 0; i < 900 && game.G.demo && game.G.demo.st.ply < 9; i++) game.step(0.25); game.step(1.2); 'demo moves ' + game.G.demo.st.ply", "wait": 800, "shot": "screenshot" }
+]

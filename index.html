@@ -159,6 +159,19 @@
   @media (max-width: 430px) and (max-aspect-ratio: 115/100) {
     .seg button { padding: 0 10px 0 7px; gap: 5px; }
   }
+  @media (max-height: 780px) and (max-aspect-ratio: 115/100) {
+    /* a shorter phone held upright: the menu a size smaller so the board still shows above it */
+    #home { height: 64vh; gap: 7px; }
+    .logo small { font-size: 20px; }
+    .logo big { font-size: 36px; }
+    .tagline { display: none; }
+    .tile { width: 120px; border-width: 4px; border-radius: 24px; }
+    .tile b { font-size: 15px; }
+    .tile .chips { font-size: 18px; }
+    .seg button { height: 42px; font-size: 13px; border-radius: 15px; border-width: 3px; }
+    .opts { gap: 7px; }
+    .duo img { width: 38px; }
+  }
 
   /* ---------- HUD ---------- */
   #hud { position: fixed; inset: 0; pointer-events: none; z-index: 6; transition: opacity 0.3s; }
@@ -281,9 +294,9 @@
   .mb i { width: 1.25em; height: 1.25em; display: grid; place-items: center; background: var(--sq-l); font-style: normal; position: relative; }
   .mb i.d { background: var(--sq-d); }
   .mb .pc { font-size: 0.68em; }
-  .mb .dot { width: 0.5em; height: 0.5em; border-radius: 50%; background: #4dff88; border: 2px solid var(--ink); font: 400 0.42em/1 var(--display); color: var(--ink); display: grid; place-items: center; }
-  .mb .dot.n { width: 0.7em; height: 0.7em; background: #fff; }
-  .mb .hit::after { content: '💥'; position: absolute; font-size: 0.75em; right: -0.15em; top: -0.2em; }
+  .mb .dot { width: 42%; height: 42%; border-radius: 50%; background: #4dff88; border: 2px solid var(--ink); font: 400 0.42em/1 var(--display); color: var(--ink); display: grid; place-items: center; }
+  .mb .dot.n { width: 58%; height: 58%; background: #fff; }
+  .mb .hit::after { content: '💥'; position: absolute; font-size: 1.05em; right: -0.45em; top: -0.5em; }
 
   #loading { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; background: #a8e6ff; font-size: 80px; transition: opacity 0.4s; }
   #loading span { animation: bump 0.8s infinite; display: inline-block; }
@@ -388,12 +401,12 @@
         <span>Forward, on the dark squares. Tap a piece to see where it can go.</span>
       </div>
       <div class="card star">
-        <div class="pic"><div class="mb" data-b="..1/.y./b.."></div></div>
+        <div class="pic"><div class="mb" data-b="_.1/.y./b._"></div></div>
         <b>JUMP OVER A PIECE TO TAKE IT. BONK!</b>
         <span>Hop over it onto the empty square behind it.</span>
       </div>
       <div class="card">
-        <div class="pic"><div class="mb" data-b="2../.y./..1/.y./b.."></div></div>
+        <div class="pic"><div class="mb" data-b="2._/.y./_.1/.y./b._"></div></div>
         <b>KEEP JUMPING: A DOUBLE JUMP!</b>
         <span>If you can jump again from where you land, keep going. It's all one move.</span>
       </div>
@@ -408,7 +421,7 @@
         <span>A king moves and jumps both ways.</span>
       </div>
       <div class="card">
-        <div class="pic"><div class="mb" data-b="..1/.y./g.."></div></div>
+        <div class="pic"><div class="mb" data-b="_.1/.y./g._"></div></div>
         <b>IF YOU CAN JUMP, YOU MUST!</b>
         <span>The pieces that must jump glow. Little ones can switch MUST JUMP off on the menu.</span>
       </div>
