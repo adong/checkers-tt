@@ -56,10 +56,10 @@
     const v = b[from], s = sideOf(v), king = isKing(v);
     const path = [], caps = [], capv = [];
     b[from] = EMPTY; // the jumper leaves its square: a king may jump in a ring and land back on it
-    const dfs = (at) => {
+    const dfs = (at, k) => {
       let more = false;
       for (let d = 0; d < 4; d++) {
-        if (!king && !FWD[s][d]) continue;
+        if (!k && !FWD[s][d]) continue;
         const land = JUMP[at * 4 + d];
         if (land < 0 || b[land] !== EMPTY) continue;
         const over = STEP[at * 4 + d], ov = b[over];
@@ -70,9 +70,9 @@
         path.push(land);
         caps.push(over);
         capv.push(ov);
-        const crowns = !king && rowOf(land) === CROWN_ROW[s];
+        const crowns = !king && (rowOf(land) === CROWN_ROW[s] || (SAB.nocrownstop && k));
         const stop = (crowns && !SAB.nocrownstop) || SAB.nomulti;
-        if (stop || !dfs(land)) out.push({ from, to: land, path: path.slice(), caps: caps.slice(), capv: capv.slice(), crown: crowns, piece: v });
+        if (stop || !dfs(land, k || crowns)) out.push({ from, to: land, path: path.slice(), caps: caps.slice(), capv: capv.slice(), crown: crowns, piece: v });
         path.pop();
         caps.pop();
         capv.pop();
@@ -80,7 +80,7 @@
       }
       return more;
     };
-    dfs(from);
+    dfs(from, king);
     b[from] = v;
     return out;
   }
@@ -279,8 +279,8 @@
     const jumping = ms[0].caps.length > 0;
     if (depth <= 0) {
       if (!jumping || ply > 40) return evaluate(b, s);
-      if (!ctx.forced) {
-        // jumping is a choice: stand pat, then only the jumps
+      if (!ms.every((m) => m.caps.length)) {
+        // jumping is a choice (MUST JUMP off): stand pat, then only the jumps
         const stand = evaluate(b, s);
         if (stand >= beta) return stand;
         if (stand > alpha) alpha = stand;
@@ -381,6 +381,7 @@
             const top = finished[0].score;
             const near = finished.filter((x) => x.score >= top - cfg.tie);
             job.move = near[Math.floor(rnd() * near.length)].m;
+            job.ranked = finished; // every root move, best first (exact scores within `tie` of the best)
             job.done = true;
             job.nodes = ctx.nodes;
             return true;
@@ -408,26 +409,45 @@
 
   // The best move for the side to move (NORMAL's thinking, without the coin toss), and what to say about it:
   // win, triple / double / jump, crown, danger (one of your pieces can be jumped: `danger` is its square) or move.
+  // When a piece is in danger he points at a move that saves it, if one is nearly as good as the best (SAVE_MARGIN);
+  // if the best plan is to let it go (a trade), he just shows the best move without the warning.
+  const SAVE_MARGIN = 40;
   function hint(st, opts = {}) {
     if (st.over) return null;
     const ms = legal(st);
     if (!ms.length) return null;
-    const m = cpuMove(st, 'normal', () => 0, Object.assign({ maxDepth: 8, nodes: 30000, tie: 0 }, opts));
+    const job = think(st, 'normal', () => 0, Object.assign({ maxDepth: 8, nodes: 30000, tie: SAVE_MARGIN }, opts));
+    while (!job.step(1e9));
+    let m = job.move;
     if (!m) return null;
+    const s = st.turn;
+    const risky = threatened(st.b, s);
+    let danger = -1;
+    if (risky.length && !m.caps.length && !m.crown) {
+      const safe = (mv) => {
+        const b = st.b.slice();
+        make(b, mv);
+        return !threatened(b, s).length;
+      };
+      const ranked = job.ranked || [{ m, score: 0 }];
+      const top = ranked[0].score;
+      const save = safe(m) ? m : (ranked.find((r) => r.score >= top - SAVE_MARGIN && safe(r.m)) || {}).m;
+      if (save) {
+        m = save;
+        danger = risky.includes(m.from) ? m.from : risky[0];
+      }
+    }
     const h = { from: m.from, to: m.to, path: m.path.slice(), caps: m.caps.slice(), crown: m.crown, kind: 'move', danger: -1 };
     const after = clone(st);
     play(after, m);
-    if (after.over && after.winner === st.turn) h.kind = 'win';
+    if (after.over && after.winner === s) h.kind = 'win';
     else if (m.caps.length >= 3) h.kind = 'triple';
     else if (m.caps.length === 2) h.kind = 'double';
     else if (m.caps.length === 1) h.kind = 'jump';
     else if (m.crown) h.kind = 'crown';
-    else {
-      const t = threatened(st.b, st.turn);
-      if (t.length) {
-        h.kind = 'danger';
-        h.danger = t.includes(m.from) ? m.from : t[0];
-      }
+    else if (danger >= 0) {
+      h.kind = 'danger';
+      h.danger = danger;
     }
     return h;
   }
@@ -436,6 +456,6 @@
     BLUE, ORANGE, EMPTY, BM, BK, OM, OK, N, DRAW_PLIES, MAN, KING, WIN, NORMAL, EASY, SAB, STEP, JUMP, DIRS,
     rowOf, colOf, sq, sideOf, isKing, manOf, kingOf, CROWN_ROW,
     gen, genJumps, jumpsFrom, stepsFrom, make, unmake, perft, startBoard, newGame, clone, legal, legalFrom, count,
-    mustJump, threatened, find, isLegal, play, evaluate, search, think, cpuMove, hint,
+    mustJump, threatened, find, isLegal, play, evaluate, search, think, cpuMove, hint, SAVE_MARGIN,
   };
 })();

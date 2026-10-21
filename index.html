@@ -202,6 +202,12 @@
   .tbtn:disabled { opacity: 0.45; }
   .tbtn.off { display: none; }
   @media (max-height: 430px) { .tbtn, .ibtn { height: 46px; min-width: 46px; width: auto; font-size: 22px; border-radius: 15px; border-width: 3px; } .ibtn { width: 46px; } .tools { left: calc(var(--pad) + 56px); } }
+  @media (max-height: 430px) and (min-aspect-ratio: 115/100) {
+    /* a phone on its side, in a game: the score and whose turn it is in a column on the right, so the board can use
+       the whole height */
+    body[data-screen="play"] .hudmid { position: fixed; right: max(10px, env(safe-area-inset-right)); top: 64px; width: 172px; margin: 0; flex-direction: column; flex-wrap: nowrap; gap: 6px; }
+    body[data-screen="play"] .turn { white-space: normal; text-align: center; font-size: 15px; line-height: 1.15; }
+  }
   @media (max-width: 520px) and (max-aspect-ratio: 115/100) {
     /* a phone held upright: pause, undo and the rules in a row, the score under them */
     .tbtn, .ibtn { height: 48px; min-width: 48px; font-size: 24px; border-radius: 16px; }

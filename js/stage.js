@@ -472,8 +472,8 @@
   // his own end, with the piles on the right; tall (a phone held upright): in front of and behind the board, so the
   // board can use the whole width. flip turns it all round for a kid playing orange.
   const SPOT = {
-    wide: { me: [-(HB + 1.3), 2.0], them: [-(HB + 1.3), -2.0], buddy: [-(HB + 1.45), 4.1], pile: [[HB + 0.85, 2.0], [HB + 0.85, -2.0]] },
-    tall: { me: [-1.6, HB + 1.45], them: [1.6, -(HB + 1.45)], buddy: [-3.45, HB + 1.2], pile: [[1.9, HB + 0.85], [-1.9, -(HB + 0.85)]] },
+    wide: { me: [-(HB + 1.1), 2.0], them: [-(HB + 1.1), -2.0], buddy: [-(HB + 1.2), 4.1], pile: [[HB + 0.75, 2.0], [HB + 0.75, -2.0]] },
+    tall: { me: [-1.6, HB + 1.15], them: [1.6, -(HB + 1.15)], buddy: [-3.45, HB + 1.0], pile: [[1.9, HB + 0.8], [-1.9, -(HB + 0.8)]] },
   };
   function layout(wide, flip) {
     fx.wide = wide;
@@ -716,7 +716,7 @@
     }
     const goldMat = new T.MeshBasicMaterial({ color: '#ffd400', depthTest: false, transparent: true });
     for (let i = 0; i < 60; i++) {
-      const s = new T.Mesh(new T.SphereGeometry(0.065, 8, 6), goldMat);
+      const s = new T.Mesh(new T.SphereGeometry(0.085, 8, 6), goldMat);
       s.visible = false;
       s.renderOrder = 9;
       scene.add(s);
@@ -732,7 +732,7 @@
     hintTo = flat(new T.PlaneGeometry(P * 1.8, P * 1.8), new T.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending }), 5);
     hintFrom = flat(new T.PlaneGeometry(P * 1.7, P * 1.7), new T.MeshBasicMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending }), 5);
     finger = sprite('👇', 0.8, 25);
-    dangerMark = sprite('❗', 0.6, 25);
+    dangerMark = sprite('❗', 0.85, 25);
   }
 
   let shown = []; // the moves being shown for the picked-up piece

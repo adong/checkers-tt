@@ -18,8 +18,8 @@
   const { rand } = Kit.gfx;
 
   const KEY = 'checkersTT.v1';
-  const SCALE = 0.9;       // the boys beside the board
-  const FOX_SCALE = 0.72;  // Foxy on her podium
+  const SCALE = 1.1;       // the boys beside the board
+  const FOX_SCALE = 0.85;  // Foxy on her podium
   const THINK_MS = 6;      // how long Foxy may think in one frame
 
   const prefs = Object.assign({ players: 1, who: 'teddy', levels: { teddy: 'normal', tommy: 'easy' }, undo: true, forced: true }, load());
@@ -161,9 +161,16 @@
         const kh = document.getElementById('kit-help-btn');
         const kitTop = kh && kh.getBoundingClientRect().height ? kh.getBoundingClientRect().top : H;
         m.b = Math.max(14, H - Math.min(call.top, kitTop) + 6);
+      } else if (getComputedStyle(ui.hudmid).position === 'fixed') {
+        // a phone on its side: the score is a column on the right (index.html), the board gets the whole height
+        m.t = 8;
+        m.b = 8;
+        m.r = Math.max(14, W - Math.min(call.left, ui.hudmid.getBoundingClientRect().left) + 6);
       } else m.r = Math.max(14, W - call.left + 6);
     }
-    ST.fit(pts, wide ? 0.98 : 1.12, G.az, m);
+    // the camera looks down steeper when the screen is short (a phone on its side) or tall, so the far squares
+    // aren't squashed: easier to tap
+    ST.fit(pts, !wide ? 1.27 : H <= 430 ? 1.17 : G.state === "home" ? 0.98 : 1.06, G.az, m);
     // the boys face the camera, turned a little toward the board
     const cp = ST.cam.position;
     G.sides && G.sides.forEach((s, k) => {
@@ -1009,7 +1016,7 @@
         bdg.visible = !!on;
         if (on) {
           s.actor.root.getWorldPosition(tmp);
-          const top = s.id === 'foxy' ? 2.45 : 2 * SCALE + 0.45;
+          const top = s.id === 'foxy' ? FOX_SCALE * 3.95 : 2 * SCALE + 0.45;
           bdg.position.set(tmp.x, top + Math.abs(Math.sin(performance.now() / 260)) * 0.16, tmp.z);
         }
       });
@@ -1041,7 +1048,7 @@
 
   function boot() {
     ui = {
-      canvas: $('game'), home: $('home'), hud: $('hud'), hudtop: document.querySelector('.hudtop'), logo: $('logo'), tools: $('tools'),
+      canvas: $('game'), home: $('home'), hud: $('hud'), hudtop: document.querySelector('.hudtop'), hudmid: document.querySelector('.hudmid'), logo: $('logo'), tools: $('tools'),
       goPlay: $('goPlay'), goRules: $('goRules'), segPlayers: $('segPlayers'), segWho: $('segWho'), segLevel: $('segLevel'), segSwitches: $('segSwitches'),
       duo: $('duo'), duoA: $('duoA'), duoB: $('duoB'), pauseBtn: $('pauseBtn'), muteBtn: $('muteBtn'), sideL: $('sideL'),
       sideR: $('sideR'), faceL: $('faceL'), faceR: $('faceR'), scoreL: $('scoreL'), scoreR: $('scoreR'), turn: $('turn'),
